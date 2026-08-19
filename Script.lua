@@ -2,206 +2,255 @@
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
 -- [[ VARIÁVEIS DE CONFIGURAÇÃO ]]
-local AimbotEnabled = false
-local FOVVisible = true
+local AimbotEnabled = true
+local TargetPart = "Head" -- "Head", "UpperTorso" (Pescoço/Peito), "HumanoidRootPart" (Corpo)
 local FOVRadius = 120
 
--- [[ CRIAÇÃO DO DESENHO DO FOV (DRAWING API) ]]
+-- [[ DESENHO DO CÍRCULO FOV ]]
 local FOVCircle = Drawing.new("Circle")
 FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
 FOVCircle.Radius = FOVRadius
 FOVCircle.Filled = false
-FOVCircle.Color = Color3.fromRGB(180, 100, 255)
+FOVCircle.Color = Color3.fromRGB(255, 0, 127) -- Rosa Pink
 FOVCircle.Thickness = 1.5
 FOVCircle.Transparency = 1
-FOVCircle.Visible = FOVVisible
+FOVCircle.Visible = true
 
--- [[ REINICIAR INTERFACE ANTIGA SE EXISTIR ]]
-if game:GetService("CoreGui"):FindFirstChild("LK7_AimbotHub") then
-    game:GetService("CoreGui")["LK7_AimbotHub"]:Destroy()
+-- [[ DESTRUIR PAINEL ANTERIOR ]]
+if game:GetService("CoreGui"):FindFirstChild("PinkMenu_LK7") then
+    game:GetService("CoreGui")["PinkMenu_LK7"]:Destroy()
 end
 
--- [[ CRIAÇÃO DO HUB SIMPLES ]]
+-- [[ INTERFACE PRINCIPAL (SCREEN GUI) ]]
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "LK7_AimbotHub"
+ScreenGui.Name = "PinkMenu_LK7"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = game:GetService("CoreGui")
 
+-- MAIN FRAME (CORPO DO PAINEL)
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 240, 0, 190)
-MainFrame.Position = UDim2.new(0.5, -120, 0.5, -95)
-MainFrame.BackgroundColor3 = Color3.fromRGB(18, 12, 28)
+MainFrame.Size = UDim2.new(0, 480, 0, 260)
+MainFrame.Position = UDim2.new(0.5, -240, 0.5, -130)
+MainFrame.BackgroundColor3 = Color3.fromRGB(8, 8, 10)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
+MainFrame.ClipsDescendants = true
 MainFrame.Parent = ScreenGui
 
 local MainCorner = Instance.new("UICorner")
-MainCorner.CornerRadius = UDim.new(0, 8)
+MainCorner.CornerRadius = UDim.new(0, 12)
 MainCorner.Parent = MainFrame
 
-local MainStroke = Instance.new("UIStroke")
-MainStroke.Color = Color3.fromRGB(120, 60, 200)
-MainStroke.Thickness = 1.5
-MainStroke.Parent = MainFrame
+-- [[ BOTÃO FLUTUANTE PARA ABRIR SE MINIMIZADO ]]
+local OpenBtn = Instance.new("TextButton")
+OpenBtn.Name = "OpenBtn"
+OpenBtn.Size = UDim2.new(0, 45, 0, 45)
+OpenBtn.Position = UDim2.new(0.05, 0, 0.2, 0)
+OpenBtn.BackgroundColor3 = Color3.fromRGB(255, 0, 127)
+OpenBtn.Text = "🌸"
+OpenBtn.TextSize = 20
+OpenBtn.Visible = false
+OpenBtn.ZIndex = 10
+OpenBtn.Parent = ScreenGui
 
--- BARRA DE TÍTULO (ÁREA PARA MOVER)
-local TitleBar = Instance.new("Frame")
-TitleBar.Name = "TitleBar"
-TitleBar.Size = UDim2.new(1, 0, 0, 32)
-TitleBar.BackgroundTransparency = 1
-TitleBar.Parent = MainFrame
+local OpenCorner = Instance.new("UICorner")
+OpenCorner.CornerRadius = UDim.new(1, 0)
+OpenCorner.Parent = OpenBtn
 
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, -35, 1, 0)
-Title.Position = UDim2.new(0, 10, 0, 0)
-Title.BackgroundTransparency = 1
-Title.Text = "🎯 LK7 - AIMBOT FOV"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.Font = Enum.Font.GothamBold
-Title.TextSize = 12
-Title.TextXAlignment = Enum.TextXAlignment.Left
-Title.Parent = TitleBar
+-- [[ BARRA DE TÍTULO / CONTROLES ]]
+local TopBar = Instance.new("Frame")
+TopBar.Size = UDim2.new(1, 0, 0, 30)
+TopBar.BackgroundTransparency = 1
+TopBar.ZIndex = 5
+TopBar.Parent = MainFrame
 
 local CloseBtn = Instance.new("TextButton")
 CloseBtn.Size = UDim2.new(0, 22, 0, 22)
-CloseBtn.Position = UDim2.new(1, -27, 0, 5)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
-CloseBtn.Text = "X"
-CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.Position = UDim2.new(1, -28, 0, 4)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(30, 20, 25)
+CloseBtn.Text = "✕"
+CloseBtn.TextColor3 = Color3.fromRGB(255, 0, 127)
 CloseBtn.Font = Enum.Font.GothamBold
-CloseBtn.TextSize = 10
-CloseBtn.Parent = TitleBar
-Instance.new("UICorner").CornerRadius = UDim.new(0, 4)
+CloseBtn.TextSize = 11
+CloseBtn.ZIndex = 6
+CloseBtn.Parent = TopBar
+Instance.new("UICorner").CornerRadius = UDim.new(0, 6)
+
+local MinimizeBtn = Instance.new("TextButton")
+MinimizeBtn.Size = UDim2.new(0, 22, 0, 22)
+MinimizeBtn.Position = UDim2.new(1, -54, 0, 4)
+MinimizeBtn.BackgroundColor3 = Color3.fromRGB(30, 20, 25)
+MinimizeBtn.Text = "─"
+MinimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinimizeBtn.Font = Enum.Font.GothamBold
+MinimizeBtn.TextSize = 10
+MinimizeBtn.ZIndex = 6
+MinimizeBtn.Parent = TopBar
+Instance.new("UICorner").CornerRadius = UDim.new(0, 6)
 
 CloseBtn.MouseButton1Click:Connect(function()
     FOVCircle:Remove()
     ScreenGui:Destroy()
 end)
 
--- BOTÃO AIMBOT TOGGLE
-local ToggleAimbotBtn = Instance.new("TextButton")
-ToggleAimbotBtn.Size = UDim2.new(1, -20, 0, 32)
-ToggleAimbotBtn.Position = UDim2.new(0, 10, 0, 42)
-ToggleAimbotBtn.BackgroundColor3 = Color3.fromRGB(35, 25, 50)
-ToggleAimbotBtn.Text = "Aimbot: OFF"
-ToggleAimbotBtn.TextColor3 = Color3.fromRGB(200, 180, 220)
-ToggleAimbotBtn.Font = Enum.Font.GothamSemibold
-ToggleAimbotBtn.TextSize = 11
-ToggleAimbotBtn.Parent = MainFrame
-Instance.new("UICorner").CornerRadius = UDim.new(0, 5)
-
-ToggleAimbotBtn.MouseButton1Click:Connect(function()
-    AimbotEnabled = not AimbotEnabled
-    ToggleAimbotBtn.Text = AimbotEnabled and "Aimbot: ON" or "Aimbot: OFF"
-    ToggleAimbotBtn.BackgroundColor3 = AimbotEnabled and Color3.fromRGB(100, 45, 170) or Color3.fromRGB(35, 25, 50)
-    ToggleAimbotBtn.TextColor3 = AimbotEnabled and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(200, 180, 220)
+MinimizeBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = false
+    OpenBtn.Visible = true
 end)
 
--- BOTÃO VISIBILIDADE FOV
-local ToggleFOVBtn = Instance.new("TextButton")
-ToggleFOVBtn.Size = UDim2.new(1, -20, 0, 32)
-ToggleFOVBtn.Position = UDim2.new(0, 10, 0, 82)
-ToggleFOVBtn.BackgroundColor3 = Color3.fromRGB(100, 45, 170)
-ToggleFOVBtn.Text = "Mostrar FOV: ON"
-ToggleFOVBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToggleFOVBtn.Font = Enum.Font.GothamSemibold
-ToggleFOVBtn.TextSize = 11
-ToggleFOVBtn.Parent = MainFrame
-Instance.new("UICorner").CornerRadius = UDim.new(0, 5)
-
-ToggleFOVBtn.MouseButton1Click:Connect(function()
-    FOVVisible = not FOVVisible
-    FOVCircle.Visible = FOVVisible
-    ToggleFOVBtn.Text = FOVVisible and "Mostrar FOV: ON" or "Mostrar FOV: OFF"
-    ToggleFOVBtn.BackgroundColor3 = FOVVisible and Color3.fromRGB(100, 45, 170) or Color3.fromRGB(35, 25, 50)
-    ToggleFOVBtn.TextColor3 = FOVVisible and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(200, 180, 220)
+OpenBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = true
+    OpenBtn.Visible = false
 end)
 
--- CONTROLE DE TAMANHO DO FOV
-local FOVControlFrame = Instance.new("Frame")
-FOVControlFrame.Size = UDim2.new(1, -20, 0, 32)
-FOVControlFrame.Position = UDim2.new(0, 10, 0, 122)
-FOVControlFrame.BackgroundTransparency = 1
-FOVControlFrame.Parent = MainFrame
+-- [[ SIDEBAR (MENU LATERAL ESQUERDO) ]]
+local SideBar = Instance.new("Frame")
+SideBar.Size = UDim2.new(0, 120, 1, 0)
+SideBar.BackgroundColor3 = Color3.fromRGB(13, 13, 16)
+SideBar.BorderSizePixel = 0
+SideBar.Parent = MainFrame
 
-local FOVMinus = Instance.new("TextButton")
-FOVMinus.Size = UDim2.new(0, 32, 1, 0)
-FOVMinus.Position = UDim2.new(0, 0, 0, 0)
-FOVMinus.BackgroundColor3 = Color3.fromRGB(35, 25, 50)
-FOVMinus.Text = "-"
-FOVMinus.TextColor3 = Color3.fromRGB(255, 255, 255)
-FOVMinus.Font = Enum.Font.GothamBold
-FOVMinus.TextSize = 14
-FOVMinus.Parent = FOVControlFrame
-Instance.new("UICorner").CornerRadius = UDim.new(0, 5)
+local SideCorner = Instance.new("UICorner")
+SideCorner.CornerRadius = UDim.new(0, 12)
+SideCorner.Parent = SideBar
 
-local FOVText = Instance.new("TextLabel")
-FOVText.Size = UDim2.new(1, -74, 1, 0)
-FOVText.Position = UDim2.new(0, 37, 0, 0)
-FOVText.BackgroundColor3 = Color3.fromRGB(25, 18, 38)
-FOVText.Text = "Tamanho FOV: " .. tostring(FOVRadius)
-FOVText.TextColor3 = Color3.fromRGB(220, 220, 220)
-FOVText.Font = Enum.Font.Gotham
-FOVText.TextSize = 10
-FOVText.Parent = FOVControlFrame
-Instance.new("UICorner").CornerRadius = UDim.new(0, 5)
+local SideList = Instance.new("UIListLayout")
+SideList.Padding = UDim.new(0, 4)
+SideList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+SideList.SortOrder = Enum.SortOrder.LayoutOrder
+SideList.Parent = SideBar
 
-local FOVPlus = Instance.new("TextButton")
-FOVPlus.Size = UDim2.new(0, 32, 1, 0)
-FOVPlus.Position = UDim2.new(1, -32, 0, 0)
-FOVPlus.BackgroundColor3 = Color3.fromRGB(35, 25, 50)
-FOVPlus.Text = "+"
-FOVPlus.TextColor3 = Color3.fromRGB(255, 255, 255)
-FOVPlus.Font = Enum.Font.GothamBold
-FOVPlus.TextSize = 14
-FOVPlus.Parent = FOVControlFrame
-Instance.new("UICorner").CornerRadius = UDim.new(0, 5)
+local SidePadding = Instance.new("UIPadding")
+SidePadding.PaddingTop = UDim.new(0, 10)
+SidePadding.Parent = SideBar
 
-FOVMinus.MouseButton1Click:Connect(function()
-    if FOVRadius > 20 then
-        FOVRadius = FOVRadius - 10
-        FOVCircle.Radius = FOVRadius
-        FOVText.Text = "Tamanho FOV: " .. tostring(FOVRadius)
+local abas = {
+    {Nome = "Principal", Icone = "🏠", Ativa = true},
+    {Nome = "Aimbot", Icone = "💀", Ativa = false},
+    {Nome = "Gelo", Icone = "❄️", Ativa = false},
+    {Nome = "Game", Icone = "🎮", Ativa = false},
+    {Nome = "Clear", Icone = "⚙️", Ativa = false},
+    {Nome = "Info", Icone = "ℹ️", Ativa = false}
+}
+
+for order, abaData in ipairs(abas) do
+    local AbaBtn = Instance.new("TextButton")
+    AbaBtn.Size = UDim2.new(0, 110, 0, 32)
+    AbaBtn.LayoutOrder = order
+    AbaBtn.BackgroundColor3 = abaData.Ativa and Color3.fromRGB(255, 0, 127) or Color3.fromRGB(18, 18, 22)
+    AbaBtn.Text = "  " .. abaData.Icone .. "   " .. abaData.Nome
+    AbaBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    AbaBtn.Font = Enum.Font.GothamBold
+    AbaBtn.TextSize = 11
+    AbaBtn.TextXAlignment = Enum.TextXAlignment.Left
+    AbaBtn.Parent = SideBar
+    Instance.new("UICorner").CornerRadius = UDim.new(0, 6)
+end
+
+-- DIVISOR VERTICAL ROSA
+local VerticalDivider = Instance.new("Frame")
+VerticalDivider.Size = UDim2.new(0, 3, 0, 220)
+VerticalDivider.Position = UDim2.new(0, 128, 0, 20)
+VerticalDivider.BackgroundColor3 = Color3.fromRGB(255, 0, 127)
+VerticalDivider.BorderSizePixel = 0
+VerticalDivider.Parent = MainFrame
+
+-- [[ CONTEÚDO DA ABA PRINCIPAL ]]
+local ContentFrame = Instance.new("Frame")
+ContentFrame.Size = UDim2.new(1, -145, 1, -20)
+ContentFrame.Position = UDim2.new(0, 140, 0, 10)
+ContentFrame.BackgroundTransparency = 1
+ContentFrame.Parent = MainFrame
+
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Size = UDim2.new(1, 0, 0, 25)
+TitleLabel.Position = UDim2.new(0, 10, 0, 10)
+TitleLabel.Text = "DEFINA O HS:"
+TitleLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+TitleLabel.Font = Enum.Font.GothamBold
+TitleLabel.TextSize = 13
+TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Parent = ContentFrame
+
+-- CONFIGURAÇÃO DOS OPÇÕES DE HS (RADIO BUTTONS)
+local opcoesHS = {
+    {Texto = "Cabeça", Part = "Head", Order = 1},
+    {Texto = "Pescoço", Part = "UpperTorso", Order = 2},
+    {Texto = "Corpo", Part = "HumanoidRootPart", Order = 3}
+}
+
+local RadioButtons = {}
+
+for _, opt in ipairs(opcoesHS) do
+    local OptionFrame = Instance.new("Frame")
+    OptionFrame.Size = UDim2.new(1, 0, 0, 35)
+    OptionFrame.Position = UDim2.new(0, 10, 0, 40 + ((opt.Order - 1) * 45))
+    OptionFrame.BackgroundTransparency = 1
+    OptionFrame.Parent = ContentFrame
+
+    local CircleOuter = Instance.new("TextButton")
+    CircleOuter.Size = UDim2.new(0, 24, 0, 24)
+    CircleOuter.Position = UDim2.new(0, 0, 0.5, -12)
+    CircleOuter.BackgroundColor3 = (TargetPart == opt.Part) and Color3.fromRGB(255, 0, 127) or Color3.fromRGB(25, 25, 30)
+    CircleOuter.Text = ""
+    CircleOuter.Parent = OptionFrame
+    
+    local CircleCorner = Instance.new("UICorner")
+    CircleCorner.CornerRadius = UDim.new(1, 0)
+    CircleCorner.Parent = CircleOuter
+
+    local Label = Instance.new("TextButton")
+    Label.Size = UDim2.new(1, -35, 1, 0)
+    Label.Position = UDim2.new(0, 32, 0, 0)
+    Label.BackgroundTransparency = 1
+    Label.Text = opt.Texto
+    Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Label.Font = Enum.Font.GothamBold
+    Label.TextSize = 13
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.Parent = OptionFrame
+
+    RadioButtons[opt.Part] = CircleOuter
+
+    local function SelecionarPonto()
+        TargetPart = opt.Part
+        for p, btn in pairs(RadioButtons) do
+            btn.BackgroundColor3 = (p == TargetPart) and Color3.fromRGB(255, 0, 127) or Color3.fromRGB(25, 25, 30)
+        end
     end
-end)
 
-FOVPlus.MouseButton1Click:Connect(function()
-    if FOVRadius < 500 then
-        FOVRadius = FOVRadius + 10
-        FOVCircle.Radius = FOVRadius
-        FOVText.Text = "Tamanho FOV: " .. tostring(FOVRadius)
-    end
-end)
+    CircleOuter.MouseButton1Click:Connect(SelecionarPonto)
+    Label.MouseButton1Click:Connect(SelecionarPonto)
+end
 
--- [[ SISTEMA DE ARRASTO DO HUB ]]
+-- [[ SISTEMA DE ARRASTO DO PAINEL ]]
 local Dragging = false
 local DragStart, StartPos
 
-UserInputService.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        local MousePos = UserInputService:GetMouseLocation()
-        local FramePos = TitleBar.AbsolutePosition
-        local FrameSize = TitleBar.AbsoluteSize
-        
-        if MousePos.X >= FramePos.X and MousePos.X <= (FramePos.X + FrameSize.X) and
-           MousePos.Y >= (FramePos.Y + 36) and MousePos.Y <= (FramePos.Y + FrameSize.Y + 36) then
-            
-            if MousePos.X > (FramePos.X + FrameSize.X - 35) then return end
-            
-            Dragging = true
-            DragStart = input.Position
-            StartPos = MainFrame.Position
-        end
+MainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        Dragging = true
+        DragStart = input.Position
+        StartPos = MainFrame.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                Dragging = false
+            end
+        end)
     end
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-    if Dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+    if Dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
         local Delta = input.Position - DragStart
         MainFrame.Position = UDim2.new(
             StartPos.X.Scale, 
@@ -212,48 +261,40 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        Dragging = false
-    end
-end)
-
--- [[ LÓGICA DO AIMBOT (BUSCA JOGADOR DENTRO DO FOV NA FRENTE DA MIRA) ]]
-local function GetClosestTargetInFOV()
-    local ClosestPlayer = nil
+-- [[ LÓGICA DE AIMBOT MODERNA ]]
+local function GetClosestTarget()
+    local ClosestPart = nil
     local ShortestDistance = FOVRadius
     local CenterScreen = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
 
     for _, v in pairs(Players:GetPlayers()) do
-        if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("Head") and v.Character:FindFirstChildOfClass("Humanoid") then
+        if v ~= LocalPlayer and v.Character and v.Character:FindFirstChildOfClass("Humanoid") then
             local Hum = v.Character:FindFirstChildOfClass("Humanoid")
             if Hum.Health > 0 then
-                local Head = v.Character.Head
-                local ScreenPos, OnScreen = Camera:WorldToViewportPoint(Head.Position)
-                
-                if OnScreen then
-                    local MouseDistance = (Vector2.new(ScreenPos.X, ScreenPos.Y) - CenterScreen).Magnitude
-                    if MouseDistance <= ShortestDistance then
-                        ShortestDistance = MouseDistance
-                        ClosestPlayer = Head
+                local TargetNode = v.Character:FindFirstChild(TargetPart) or v.Character:FindFirstChild("Head")
+                if TargetNode then
+                    local ScreenPos, OnScreen = Camera:WorldToViewportPoint(TargetNode.Position)
+                    if OnScreen then
+                        local Distance = (Vector2.new(ScreenPos.X, ScreenPos.Y) - CenterScreen).Magnitude
+                        if Distance <= ShortestDistance then
+                            ShortestDistance = Distance
+                            ClosestPart = TargetNode
+                        end
                     end
                 end
             end
         end
     end
-    return ClosestPlayer
+    return ClosestPart
 end
 
--- [[ LOOP PRINCIPAL DE ATUALIZAÇÃO ]]
 RunService.RenderStepped:Connect(function()
-    -- Atualizar Posição do Círculo do FOV no Centro
     FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
     
-    -- Grudar Mira na Cabeça se o Aimbot estiver Ativo
     if AimbotEnabled then
-        local TargetHead = GetClosestTargetInFOV()
-        if TargetHead then
-            Camera.CFrame = CFrame.new(Camera.CFrame.Position, TargetHead.Position)
+        local Target = GetClosestTarget()
+        if Target then
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, Target.Position)
         end
     end
 end)
