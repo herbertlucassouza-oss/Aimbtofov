@@ -2,14 +2,15 @@
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
-
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
 -- [[ VARIÁVEIS DE CONFIGURAÇÃO ]]
-local AimbotEnabled = true
-local TargetPart = "Head" -- "Head", "UpperTorso" (Pescoço/Peito), "HumanoidRootPart" (Corpo)
+local AimbotEnabled = false
+local FOVVisible = true
+local ESPEnabled = true
+local AntennaEnabled = true
+local TargetPart = "Head" -- "Head", "UpperTorso", "HumanoidRootPart"
 local FOVRadius = 120
 
 -- [[ DESENHO DO CÍRCULO FOV ]]
@@ -20,7 +21,24 @@ FOVCircle.Filled = false
 FOVCircle.Color = Color3.fromRGB(255, 0, 127) -- Rosa Pink
 FOVCircle.Thickness = 1.5
 FOVCircle.Transparency = 1
-FOVCircle.Visible = true
+FOVCircle.Visible = FOVVisible
+
+-- [[ SISTEMA DE ESP / ANTENA (TABELAS DE DESENHO) ]]
+local ESPBoxes = {}
+local ESPAntennas = {}
+
+local function RemoveESP(player)
+    if ESPBoxes[player] then
+        ESPBoxes[player]:Remove()
+        ESPBoxes[player] = nil
+    end
+    if ESPAntennas[player] then
+        ESPAntennas[player]:Remove()
+        ESPAntennas[player] = nil
+    end
+end
+
+Players.PlayerRemoving:Connect(RemoveESP)
 
 -- [[ DESTRUIR PAINEL ANTERIOR ]]
 if game:GetService("CoreGui"):FindFirstChild("PinkMenu_LK7") then
@@ -33,11 +51,11 @@ ScreenGui.Name = "PinkMenu_LK7"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = game:GetService("CoreGui")
 
--- MAIN FRAME (CORPO DO PAINEL)
+-- MAIN FRAME
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 480, 0, 260)
-MainFrame.Position = UDim2.new(0.5, -240, 0.5, -130)
+MainFrame.Size = UDim2.new(0, 500, 0, 280)
+MainFrame.Position = UDim2.new(0.5, -250, 0.5, -140)
 MainFrame.BackgroundColor3 = Color3.fromRGB(8, 8, 10)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
@@ -97,6 +115,8 @@ Instance.new("UICorner").CornerRadius = UDim.new(0, 6)
 
 CloseBtn.MouseButton1Click:Connect(function()
     FOVCircle:Remove()
+    for plr, box in pairs(ESPBoxes) do box:Remove() end
+    for plr, ant in pairs(ESPAntennas) do ant:Remove() end
     ScreenGui:Destroy()
 end)
 
@@ -132,19 +152,19 @@ SidePadding.PaddingTop = UDim.new(0, 10)
 SidePadding.Parent = SideBar
 
 local abas = {
-    {Nome = "Principal", Icone = "🏠", Ativa = true},
-    {Nome = "Aimbot", Icone = "💀", Ativa = false},
-    {Nome = "Gelo", Icone = "❄️", Ativa = false},
-    {Nome = "Game", Icone = "🎮", Ativa = false},
-    {Nome = "Clear", Icone = "⚙️", Ativa = false},
-    {Nome = "Info", Icone = "ℹ️", Ativa = false}
+    {Nome = "Principal", Icone = "🏠"},
+    {Nome = "Aimbot", Icone = "💀"},
+    {Nome = "Gelo", Icone = "❄️"},
+    {Nome = "Game", Icone = "🎮"},
+    {Nome = "Clear", Icone = "⚙️"},
+    {Nome = "Info", Icone = "ℹ️"}
 }
 
 for order, abaData in ipairs(abas) do
     local AbaBtn = Instance.new("TextButton")
     AbaBtn.Size = UDim2.new(0, 110, 0, 32)
     AbaBtn.LayoutOrder = order
-    AbaBtn.BackgroundColor3 = abaData.Ativa and Color3.fromRGB(255, 0, 127) or Color3.fromRGB(18, 18, 22)
+    AbaBtn.BackgroundColor3 = (order == 1) and Color3.fromRGB(255, 0, 127) or Color3.fromRGB(18, 18, 22)
     AbaBtn.Text = "  " .. abaData.Icone .. "   " .. abaData.Nome
     AbaBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     AbaBtn.Font = Enum.Font.GothamBold
@@ -156,95 +176,137 @@ end
 
 -- DIVISOR VERTICAL ROSA
 local VerticalDivider = Instance.new("Frame")
-VerticalDivider.Size = UDim2.new(0, 3, 0, 220)
+VerticalDivider.Size = UDim2.new(0, 3, 0, 240)
 VerticalDivider.Position = UDim2.new(0, 128, 0, 20)
 VerticalDivider.BackgroundColor3 = Color3.fromRGB(255, 0, 127)
 VerticalDivider.BorderSizePixel = 0
 VerticalDivider.Parent = MainFrame
 
--- [[ CONTEÚDO DA ABA PRINCIPAL ]]
-local ContentFrame = Instance.new("Frame")
+-- [[ CONTEÚDO PRINCIPAL (SCROLL FRAME) ]]
+local ContentFrame = Instance.new("ScrollingFrame")
 ContentFrame.Size = UDim2.new(1, -145, 1, -20)
 ContentFrame.Position = UDim2.new(0, 140, 0, 10)
 ContentFrame.BackgroundTransparency = 1
+ContentFrame.CanvasSize = UDim2.new(0, 0, 0, 320)
+ContentFrame.ScrollBarThickness = 3
+ContentFrame.ScrollBarImageColor3 = Color3.fromRGB(255, 0, 127)
 ContentFrame.Parent = MainFrame
 
-local TitleLabel = Instance.new("TextLabel")
-TitleLabel.Size = UDim2.new(1, 0, 0, 25)
-TitleLabel.Position = UDim2.new(0, 10, 0, 10)
-TitleLabel.Text = "DEFINA O HS:"
-TitleLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-TitleLabel.Font = Enum.Font.GothamBold
-TitleLabel.TextSize = 13
-TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
-TitleLabel.BackgroundTransparency = 1
-TitleLabel.Parent = ContentFrame
+local ContentList = Instance.new("UIListLayout")
+ContentList.Padding = UDim.new(0, 8)
+ContentList.SortOrder = Enum.SortOrder.LayoutOrder
+ContentList.Parent = ContentFrame
 
--- CONFIGURAÇÃO DOS OPÇÕES DE HS (RADIO BUTTONS)
+-- [[ FUNÇÃO PARA CRIAR BOTÃO TOGGLE (ATIVAR/DESATIVAR) ]]
+local function CreateToggle(title, defaultState, callback)
+    local Frame = Instance.new("Frame")
+    Frame.Size = UDim2.new(0.95, 0, 0, 30)
+    Frame.BackgroundTransparency = 1
+    Frame.Parent = ContentFrame
+
+    local Label = Instance.new("TextLabel")
+    Label.Size = UDim2.new(0.7, 0, 1, 0)
+    Label.Text = title
+    Label.TextColor3 = Color3.fromRGB(230, 230, 230)
+    Label.Font = Enum.Font.GothamBold
+    Label.TextSize = 12
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.BackgroundTransparency = 1
+    Label.Parent = Frame
+
+    local ToggleBtn = Instance.new("TextButton")
+    ToggleBtn.Size = UDim2.new(0, 45, 0, 22)
+    ToggleBtn.Position = UDim2.new(1, -45, 0.5, -11)
+    ToggleBtn.BackgroundColor3 = defaultState and Color3.fromRGB(255, 0, 127) or Color3.fromRGB(30, 30, 35)
+    ToggleBtn.Text = defaultState and "ON" or "OFF"
+    ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ToggleBtn.Font = Enum.Font.GothamBold
+    ToggleBtn.TextSize = 10
+    ToggleBtn.Parent = Frame
+    Instance.new("UICorner").CornerRadius = UDim.new(0, 11)
+
+    local state = defaultState
+    ToggleBtn.MouseButton1Click:Connect(function()
+        state = not state
+        ToggleBtn.BackgroundColor3 = state and Color3.fromRGB(255, 0, 127) or Color3.fromRGB(30, 30, 35)
+        ToggleBtn.Text = state and "ON" or "OFF"
+        callback(state)
+    end)
+end
+
+-- ATIVADORES (TOGGLES)
+CreateToggle("ATIVAR AIMBOT", AimbotEnabled, function(val) AimbotEnabled = val end)
+CreateToggle("EXIBIR CÍRCULO FOV", FOVVisible, function(val) 
+    FOVVisible = val 
+    FOVCircle.Visible = val 
+end)
+CreateToggle("QUADRADO PAREDE (ESP)", ESPEnabled, function(val) ESPEnabled = val end)
+CreateToggle("ANTENA NOS INIMIGOS", AntennaEnabled, function(val) AntennaEnabled = val end)
+
+-- SELETOR DE PONTO DE TIRO
+local TitleHS = Instance.new("TextLabel")
+TitleHS.Size = UDim2.new(1, 0, 0, 20)
+TitleHS.Text = "DEFINA O HS:"
+TitleHS.TextColor3 = Color3.fromRGB(255, 0, 127)
+TitleHS.Font = Enum.Font.GothamBold
+TitleHS.TextSize = 12
+TitleHS.TextXAlignment = Enum.TextXAlignment.Left
+TitleHS.BackgroundTransparency = 1
+TitleHS.Parent = ContentFrame
+
 local opcoesHS = {
-    {Texto = "Cabeça", Part = "Head", Order = 1},
-    {Texto = "Pescoço", Part = "UpperTorso", Order = 2},
-    {Texto = "Corpo", Part = "HumanoidRootPart", Order = 3}
+    {Texto = "Cabeça", Part = "Head"},
+    {Texto = "Pescoço", Part = "UpperTorso"},
+    {Texto = "Corpo", Part = "HumanoidRootPart"}
 }
 
 local RadioButtons = {}
-
 for _, opt in ipairs(opcoesHS) do
     local OptionFrame = Instance.new("Frame")
-    OptionFrame.Size = UDim2.new(1, 0, 0, 35)
-    OptionFrame.Position = UDim2.new(0, 10, 0, 40 + ((opt.Order - 1) * 45))
+    OptionFrame.Size = UDim2.new(0.95, 0, 0, 25)
     OptionFrame.BackgroundTransparency = 1
     OptionFrame.Parent = ContentFrame
 
     local CircleOuter = Instance.new("TextButton")
-    CircleOuter.Size = UDim2.new(0, 24, 0, 24)
-    CircleOuter.Position = UDim2.new(0, 0, 0.5, -12)
+    CircleOuter.Size = UDim2.new(0, 18, 0, 18)
+    CircleOuter.Position = UDim2.new(0, 0, 0.5, -9)
     CircleOuter.BackgroundColor3 = (TargetPart == opt.Part) and Color3.fromRGB(255, 0, 127) or Color3.fromRGB(25, 25, 30)
     CircleOuter.Text = ""
     CircleOuter.Parent = OptionFrame
-    
-    local CircleCorner = Instance.new("UICorner")
-    CircleCorner.CornerRadius = UDim.new(1, 0)
-    CircleCorner.Parent = CircleOuter
+    Instance.new("UICorner").CornerRadius = UDim.new(1, 0).Parent = CircleOuter
 
     local Label = Instance.new("TextButton")
-    Label.Size = UDim2.new(1, -35, 1, 0)
-    Label.Position = UDim2.new(0, 32, 0, 0)
+    Label.Size = UDim2.new(1, -25, 1, 0)
+    Label.Position = UDim2.new(0, 25, 0, 0)
     Label.BackgroundTransparency = 1
     Label.Text = opt.Texto
-    Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Label.TextColor3 = Color3.fromRGB(200, 200, 200)
     Label.Font = Enum.Font.GothamBold
-    Label.TextSize = 13
+    Label.TextSize = 11
     Label.TextXAlignment = Enum.TextXAlignment.Left
     Label.Parent = OptionFrame
 
     RadioButtons[opt.Part] = CircleOuter
 
-    local function SelecionarPonto()
+    local function Selecionar()
         TargetPart = opt.Part
         for p, btn in pairs(RadioButtons) do
             btn.BackgroundColor3 = (p == TargetPart) and Color3.fromRGB(255, 0, 127) or Color3.fromRGB(25, 25, 30)
         end
     end
-
-    CircleOuter.MouseButton1Click:Connect(SelecionarPonto)
-    Label.MouseButton1Click:Connect(SelecionarPonto)
+    CircleOuter.MouseButton1Click:Connect(Selecionar)
+    Label.MouseButton1Click:Connect(Selecionar)
 end
 
--- [[ SISTEMA DE ARRASTO DO PAINEL ]]
-local Dragging = false
-local DragStart, StartPos
-
+-- [[ SISTEMA DE ARRASTO ]]
+local Dragging, DragStart, StartPos
 MainFrame.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         Dragging = true
         DragStart = input.Position
         StartPos = MainFrame.Position
-
         input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                Dragging = false
-            end
+            if input.UserInputState == Enum.UserInputState.End then Dragging = false end
         end)
     end
 end)
@@ -252,16 +314,11 @@ end)
 UserInputService.InputChanged:Connect(function(input)
     if Dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
         local Delta = input.Position - DragStart
-        MainFrame.Position = UDim2.new(
-            StartPos.X.Scale, 
-            StartPos.X.Offset + Delta.X, 
-            StartPos.Y.Scale, 
-            StartPos.Y.Offset + Delta.Y
-        )
+        MainFrame.Position = UDim2.new(StartPos.X.Scale, StartPos.X.Offset + Delta.X, StartPos.Y.Scale, StartPos.Y.Offset + Delta.Y)
     end
 end)
 
--- [[ LÓGICA DE AIMBOT MODERNA ]]
+-- [[ LÓGICA DE AIMBOT, ESP E ANTENA ]]
 local function GetClosestTarget()
     local ClosestPart = nil
     local ShortestDistance = FOVRadius
@@ -288,13 +345,76 @@ local function GetClosestTarget()
     return ClosestPart
 end
 
+-- LOOP DE ATUALIZAÇÃO DA TELA
 RunService.RenderStepped:Connect(function()
+    -- Atualizar FOV
     FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-    
+    FOVCircle.Visible = FOVVisible
+
+    -- Executar Aimbot
     if AimbotEnabled then
         local Target = GetClosestTarget()
         if Target then
             Camera.CFrame = CFrame.new(Camera.CFrame.Position, Target.Position)
+        end
+    end
+
+    -- Desenhar ESP Box e Antena
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer then
+            local char = plr.Character
+            if char and char:FindFirstChild("Humanoid") and char.Humanoid.Health > 0 and char:FindFirstChild("HumanoidRootPart") then
+                local hrp = char.HumanoidRootPart
+                local head = char:FindFirstChild("Head")
+                local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+
+                if onScreen then
+                    -- QUADRADO (BOX ESP)
+                    if ESPEnabled then
+                        if not ESPBoxes[plr] then
+                            local box = Drawing.new("Square")
+                            box.Color = Color3.fromRGB(255, 0, 127)
+                            box.Thickness = 1.5
+                            box.Filled = false
+                            ESPBoxes[plr] = box
+                        end
+
+                        local headPos = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0))
+                        local legPos = Camera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3, 0))
+                        local height = math.abs(headPos.Y - legPos.Y)
+                        local width = height / 1.5
+
+                        ESPBoxes[plr].Size = Vector2.new(width, height)
+                        ESPBoxes[plr].Position = Vector2.new(pos.X - width / 2, pos.Y - height / 2)
+                        ESPBoxes[plr].Visible = true
+                    elseif ESPBoxes[plr] then
+                        ESPBoxes[plr].Visible = false
+                    end
+
+                    -- ANTENA (TRACER)
+                    if AntennaEnabled and head then
+                        if not ESPAntennas[plr] then
+                            local line = Drawing.new("Line")
+                            line.Color = Color3.fromRGB(255, 0, 127)
+                            line.Thickness = 1.5
+                            ESPAntennas[plr] = line
+                        end
+
+                        local headPos = Camera:WorldToViewportPoint(head.Position)
+                        ESPAntennas[plr].From = Vector2.new(Camera.ViewportSize.X / 2, 0) -- Sai do topo da tela
+                        ESPAntennas[plr].To = Vector2.new(headPos.X, headPos.Y)
+                        ESPAntennas[plr].Visible = true
+                    elseif ESPAntennas[plr] then
+                        ESPAntennas[plr].Visible = false
+                    end
+                else
+                    if ESPBoxes[plr] then ESPBoxes[plr].Visible = false end
+                    if ESPAntennas[plr] then ESPAntennas[plr].Visible = false end
+                end
+            else
+                if ESPBoxes[plr] then ESPBoxes[plr].Visible = false end
+                if ESPAntennas[plr] then ESPAntennas[plr].Visible = false end
+            end
         end
     end
 end)
