@@ -13,27 +13,30 @@ local AntennaEnabled = true
 local TargetPart = "Head" -- "Head", "UpperTorso", "HumanoidRootPart"
 local FOVRadius = 120
 
--- [[ DESENHO DO CÍRCULO FOV ]]
-local FOVCircle = Drawing.new("Circle")
-FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-FOVCircle.Radius = FOVRadius
-FOVCircle.Filled = false
-FOVCircle.Color = Color3.fromRGB(255, 0, 127) -- Rosa Pink
-FOVCircle.Thickness = 1.5
-FOVCircle.Transparency = 1
-FOVCircle.Visible = FOVVisible
+-- [[ DESENHO DO CÍRCULO FOV (COM TRATAMENTO DE ERRO) ]]
+local FOVCircle = nil
+pcall(function()
+    FOVCircle = Drawing.new("Circle")
+    FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    FOVCircle.Radius = FOVRadius
+    FOVCircle.Filled = false
+    FOVCircle.Color = Color3.fromRGB(255, 0, 127)
+    FOVCircle.Thickness = 1.5
+    FOVCircle.Transparency = 1
+    FOVCircle.Visible = FOVVisible
+end)
 
--- [[ SISTEMA DE ESP / ANTENA (TABELAS DE DESENHO) ]]
+-- [[ TABELAS DE ESP / ANTENA ]]
 local ESPBoxes = {}
 local ESPAntennas = {}
 
 local function RemoveESP(player)
     if ESPBoxes[player] then
-        ESPBoxes[player]:Remove()
+        pcall(function() ESPBoxes[player]:Remove() end)
         ESPBoxes[player] = nil
     end
     if ESPAntennas[player] then
-        ESPAntennas[player]:Remove()
+        pcall(function() ESPAntennas[player]:Remove() end)
         ESPAntennas[player] = nil
     end
 end
@@ -66,7 +69,7 @@ local MainCorner = Instance.new("UICorner")
 MainCorner.CornerRadius = UDim.new(0, 12)
 MainCorner.Parent = MainFrame
 
--- [[ BOTÃO FLUTUANTE PARA ABRIR SE MINIMIZADO ]]
+-- BOTÃO FLUTUANTE DE ABRIR
 local OpenBtn = Instance.new("TextButton")
 OpenBtn.Name = "OpenBtn"
 OpenBtn.Size = UDim2.new(0, 45, 0, 45)
@@ -82,7 +85,7 @@ local OpenCorner = Instance.new("UICorner")
 OpenCorner.CornerRadius = UDim.new(1, 0)
 OpenCorner.Parent = OpenBtn
 
--- [[ BARRA DE TÍTULO / CONTROLES ]]
+-- BARRA DE CONTROLE (FECHAR / MINIMIZAR)
 local TopBar = Instance.new("Frame")
 TopBar.Size = UDim2.new(1, 0, 0, 30)
 TopBar.BackgroundTransparency = 1
@@ -99,7 +102,9 @@ CloseBtn.Font = Enum.Font.GothamBold
 CloseBtn.TextSize = 11
 CloseBtn.ZIndex = 6
 CloseBtn.Parent = TopBar
-Instance.new("UICorner").CornerRadius = UDim.new(0, 6)
+local CloseCorner = Instance.new("UICorner")
+CloseCorner.CornerRadius = UDim.new(0, 6)
+CloseCorner.Parent = CloseBtn
 
 local MinimizeBtn = Instance.new("TextButton")
 MinimizeBtn.Size = UDim2.new(0, 22, 0, 22)
@@ -111,12 +116,14 @@ MinimizeBtn.Font = Enum.Font.GothamBold
 MinimizeBtn.TextSize = 10
 MinimizeBtn.ZIndex = 6
 MinimizeBtn.Parent = TopBar
-Instance.new("UICorner").CornerRadius = UDim.new(0, 6)
+local MinCorner = Instance.new("UICorner")
+MinCorner.CornerRadius = UDim.new(0, 6)
+MinCorner.Parent = MinimizeBtn
 
 CloseBtn.MouseButton1Click:Connect(function()
-    FOVCircle:Remove()
-    for plr, box in pairs(ESPBoxes) do box:Remove() end
-    for plr, ant in pairs(ESPAntennas) do ant:Remove() end
+    if FOVCircle then pcall(function() FOVCircle:Remove() end) end
+    for plr, box in pairs(ESPBoxes) do pcall(function() box:Remove() end) end
+    for plr, ant in pairs(ESPAntennas) do pcall(function() ant:Remove() end) end
     ScreenGui:Destroy()
 end)
 
@@ -130,7 +137,7 @@ OpenBtn.MouseButton1Click:Connect(function()
     OpenBtn.Visible = false
 end)
 
--- [[ SIDEBAR (MENU LATERAL ESQUERDO) ]]
+-- MENU LATERAL (SIDEBAR)
 local SideBar = Instance.new("Frame")
 SideBar.Size = UDim2.new(0, 120, 1, 0)
 SideBar.BackgroundColor3 = Color3.fromRGB(13, 13, 16)
@@ -171,10 +178,12 @@ for order, abaData in ipairs(abas) do
     AbaBtn.TextSize = 11
     AbaBtn.TextXAlignment = Enum.TextXAlignment.Left
     AbaBtn.Parent = SideBar
-    Instance.new("UICorner").CornerRadius = UDim.new(0, 6)
+    local AbaCorner = Instance.new("UICorner")
+    AbaCorner.CornerRadius = UDim.new(0, 6)
+    AbaCorner.Parent = AbaBtn
 end
 
--- DIVISOR VERTICAL ROSA
+-- DIVISOR ROSA
 local VerticalDivider = Instance.new("Frame")
 VerticalDivider.Size = UDim2.new(0, 3, 0, 240)
 VerticalDivider.Position = UDim2.new(0, 128, 0, 20)
@@ -182,7 +191,7 @@ VerticalDivider.BackgroundColor3 = Color3.fromRGB(255, 0, 127)
 VerticalDivider.BorderSizePixel = 0
 VerticalDivider.Parent = MainFrame
 
--- [[ CONTEÚDO PRINCIPAL (SCROLL FRAME) ]]
+-- ÁREA DE CONTEÚDO
 local ContentFrame = Instance.new("ScrollingFrame")
 ContentFrame.Size = UDim2.new(1, -145, 1, -20)
 ContentFrame.Position = UDim2.new(0, 140, 0, 10)
@@ -197,7 +206,7 @@ ContentList.Padding = UDim.new(0, 8)
 ContentList.SortOrder = Enum.SortOrder.LayoutOrder
 ContentList.Parent = ContentFrame
 
--- [[ FUNÇÃO PARA CRIAR BOTÃO TOGGLE (ATIVAR/DESATIVAR) ]]
+-- CRIAR BOTÃO TOGGLE
 local function CreateToggle(title, defaultState, callback)
     local Frame = Instance.new("Frame")
     Frame.Size = UDim2.new(0.95, 0, 0, 30)
@@ -223,7 +232,10 @@ local function CreateToggle(title, defaultState, callback)
     ToggleBtn.Font = Enum.Font.GothamBold
     ToggleBtn.TextSize = 10
     ToggleBtn.Parent = Frame
-    Instance.new("UICorner").CornerRadius = UDim.new(0, 11)
+    
+    local TogCorner = Instance.new("UICorner")
+    TogCorner.CornerRadius = UDim.new(0, 11)
+    TogCorner.Parent = ToggleBtn
 
     local state = defaultState
     ToggleBtn.MouseButton1Click:Connect(function()
@@ -234,16 +246,16 @@ local function CreateToggle(title, defaultState, callback)
     end)
 end
 
--- ATIVADORES (TOGGLES)
+-- CONTROLES TOGGLES
 CreateToggle("ATIVAR AIMBOT", AimbotEnabled, function(val) AimbotEnabled = val end)
 CreateToggle("EXIBIR CÍRCULO FOV", FOVVisible, function(val) 
     FOVVisible = val 
-    FOVCircle.Visible = val 
+    if FOVCircle then FOVCircle.Visible = val end
 end)
 CreateToggle("QUADRADO PAREDE (ESP)", ESPEnabled, function(val) ESPEnabled = val end)
 CreateToggle("ANTENA NOS INIMIGOS", AntennaEnabled, function(val) AntennaEnabled = val end)
 
--- SELETOR DE PONTO DE TIRO
+-- SELETOR DEFINA O HS
 local TitleHS = Instance.new("TextLabel")
 TitleHS.Size = UDim2.new(1, 0, 0, 20)
 TitleHS.Text = "DEFINA O HS:"
@@ -273,7 +285,10 @@ for _, opt in ipairs(opcoesHS) do
     CircleOuter.BackgroundColor3 = (TargetPart == opt.Part) and Color3.fromRGB(255, 0, 127) or Color3.fromRGB(25, 25, 30)
     CircleOuter.Text = ""
     CircleOuter.Parent = OptionFrame
-    Instance.new("UICorner").CornerRadius = UDim.new(1, 0).Parent = CircleOuter
+    
+    local RadCorner = Instance.new("UICorner")
+    RadCorner.CornerRadius = UDim.new(1, 0)
+    RadCorner.Parent = CircleOuter
 
     local Label = Instance.new("TextButton")
     Label.Size = UDim2.new(1, -25, 1, 0)
@@ -298,7 +313,7 @@ for _, opt in ipairs(opcoesHS) do
     Label.MouseButton1Click:Connect(Selecionar)
 end
 
--- [[ SISTEMA DE ARRASTO ]]
+-- ARRASTO LIVRE DA TELA
 local Dragging, DragStart, StartPos
 MainFrame.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -318,7 +333,7 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
--- [[ LÓGICA DE AIMBOT, ESP E ANTENA ]]
+-- AIMBOT
 local function GetClosestTarget()
     local ClosestPart = nil
     local ShortestDistance = FOVRadius
@@ -345,13 +360,13 @@ local function GetClosestTarget()
     return ClosestPart
 end
 
--- LOOP DE ATUALIZAÇÃO DA TELA
+-- LOOP DE ATUALIZAÇÃO
 RunService.RenderStepped:Connect(function()
-    -- Atualizar FOV
-    FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-    FOVCircle.Visible = FOVVisible
+    if FOVCircle then
+        FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+        FOVCircle.Visible = FOVVisible
+    end
 
-    -- Executar Aimbot
     if AimbotEnabled then
         local Target = GetClosestTarget()
         if Target then
@@ -359,7 +374,7 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
-    -- Desenhar ESP Box e Antena
+    -- DESENHAR ESP BOX E ANTENA
     for _, plr in pairs(Players:GetPlayers()) do
         if plr ~= LocalPlayer then
             local char = plr.Character
@@ -371,49 +386,53 @@ RunService.RenderStepped:Connect(function()
                 if onScreen then
                     -- QUADRADO (BOX ESP)
                     if ESPEnabled then
-                        if not ESPBoxes[plr] then
-                            local box = Drawing.new("Square")
-                            box.Color = Color3.fromRGB(255, 0, 127)
-                            box.Thickness = 1.5
-                            box.Filled = false
-                            ESPBoxes[plr] = box
-                        end
+                        pcall(function()
+                            if not ESPBoxes[plr] then
+                                local box = Drawing.new("Square")
+                                box.Color = Color3.fromRGB(255, 0, 127)
+                                box.Thickness = 1.5
+                                box.Filled = false
+                                ESPBoxes[plr] = box
+                            end
 
-                        local headPos = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0))
-                        local legPos = Camera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3, 0))
-                        local height = math.abs(headPos.Y - legPos.Y)
-                        local width = height / 1.5
+                            local headPos = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0))
+                            local legPos = Camera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3, 0))
+                            local height = math.abs(headPos.Y - legPos.Y)
+                            local width = height / 1.5
 
-                        ESPBoxes[plr].Size = Vector2.new(width, height)
-                        ESPBoxes[plr].Position = Vector2.new(pos.X - width / 2, pos.Y - height / 2)
-                        ESPBoxes[plr].Visible = true
+                            ESPBoxes[plr].Size = Vector2.new(width, height)
+                            ESPBoxes[plr].Position = Vector2.new(pos.X - width / 2, pos.Y - height / 2)
+                            ESPBoxes[plr].Visible = true
+                        end)
                     elseif ESPBoxes[plr] then
-                        ESPBoxes[plr].Visible = false
+                        pcall(function() ESPBoxes[plr].Visible = false end)
                     end
 
                     -- ANTENA (TRACER)
                     if AntennaEnabled and head then
-                        if not ESPAntennas[plr] then
-                            local line = Drawing.new("Line")
-                            line.Color = Color3.fromRGB(255, 0, 127)
-                            line.Thickness = 1.5
-                            ESPAntennas[plr] = line
-                        end
+                        pcall(function()
+                            if not ESPAntennas[plr] then
+                                local line = Drawing.new("Line")
+                                line.Color = Color3.fromRGB(255, 0, 127)
+                                line.Thickness = 1.5
+                                ESPAntennas[plr] = line
+                            end
 
-                        local headPos = Camera:WorldToViewportPoint(head.Position)
-                        ESPAntennas[plr].From = Vector2.new(Camera.ViewportSize.X / 2, 0) -- Sai do topo da tela
-                        ESPAntennas[plr].To = Vector2.new(headPos.X, headPos.Y)
-                        ESPAntennas[plr].Visible = true
+                            local headPos = Camera:WorldToViewportPoint(head.Position)
+                            ESPAntennas[plr].From = Vector2.new(Camera.ViewportSize.X / 2, 0)
+                            ESPAntennas[plr].To = Vector2.new(headPos.X, headPos.Y)
+                            ESPAntennas[plr].Visible = true
+                        end)
                     elseif ESPAntennas[plr] then
-                        ESPAntennas[plr].Visible = false
+                        pcall(function() ESPAntennas[plr].Visible = false end)
                     end
                 else
-                    if ESPBoxes[plr] then ESPBoxes[plr].Visible = false end
-                    if ESPAntennas[plr] then ESPAntennas[plr].Visible = false end
+                    if ESPBoxes[plr] then pcall(function() ESPBoxes[plr].Visible = false end) end
+                    if ESPAntennas[plr] then pcall(function() ESPAntennas[plr].Visible = false end) end
                 end
             else
-                if ESPBoxes[plr] then ESPBoxes[plr].Visible = false end
-                if ESPAntennas[plr] then ESPAntennas[plr].Visible = false end
+                if ESPBoxes[plr] then pcall(function() ESPBoxes[plr].Visible = false end) end
+                if ESPAntennas[plr] then pcall(function() ESPAntennas[plr].Visible = false end) end
             end
         end
     end
